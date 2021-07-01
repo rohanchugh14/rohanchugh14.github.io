@@ -6,12 +6,9 @@ canvas.width = 1800;
 canvas.height = 800;
 const numCols = canvas.width / unit;
 const numRows = canvas.height / unit;
-let startNode = new Node(2,2,0,numRows*numCols, true, "start");//convertToIndex([2,1]);
-let endNode = new Node(35,14,numRows* numCols,0, true, "end");//convertToIndex([10,1]);
-// console.log("Start: ");
-// console.log(startNode);
-// console.log("End:");
-// console.log(endNode);
+let startNode = new Node(2,0,0,numRows*numCols, true, "start");
+let endNode = new Node(31,2,numRows* numCols,0, true, "end");
+
 let foundEndNode = false;
 
 function Node(col, row, gCost, hCost, walkable, role) {
@@ -59,8 +56,6 @@ function drawGrid() {
     ctx.strokeStyle = tempColor;
 }
 function init() {
-    // ctx.translate(canvas.width*0.5,canvas.height*0.5); //moves the center to 0,0 and reflects it across the x-axis so that y decreases as it goes down the screen
-    // ctx.scale(1,-1);
     canvas.style.marginLeft = (window.innerWidth - canvas.width) * 0.5 + "px";
     drawGrid();
 }
@@ -79,19 +74,19 @@ function initializeNodes() {
     drawNode(endNode);
     
     openNodes.push(startNode);
-    allNodes[75].walkable = false;
     for(let i = 0; i < numRows - 1; i++) {
         allNodes[convertToIndex([6,i])].walkable = false;
+        barrierNodes.push(allNodes[convertToIndex([6,i])]);
     }
+    for(let i = numRows-1; i > 0; i--) {
+        allNodes[convertToIndex([30,i])].walkable = false;
+        barrierNodes.push(allNodes[convertToIndex([30,i])]);
+    }
+    console.log(barrierNodes);
+    for(let i = 0; i < barrierNodes.length; i++)
+            drawNode(barrierNodes[i]);
 }
-// function debugging() {
-//     let i = 0;
-//     for(node of allNodes) {
-//         console.log("Node " + i + ":");
-//         console.log("X: " + node.row + " Y: " + node.col);
-//         i++;
-//     }
-// }
+
 function dist(start, end) {
     
     let deltaX = parseInt(Math.abs(start.col - end.col));
@@ -112,11 +107,13 @@ window.onresize = function() {
 function drawNode(node) {
     ctx.beginPath();
     if(node.role === "start" || node.role === "end")
-        ctx.fillStyle = "#008b8b";
+        ctx.fillStyle = "#ffff00";
     else if(node.role === "path") 
-        ctx.fillStyle = "#cc5500";
-    else 
-        ctx.fillStyle = "rgb(0,255,0)";
+        ctx.fillStyle = "#f81894";
+    else if(!node.walkable)
+        ctx.fillStyle = "rgb(100,100,100)";
+    else
+        ctx.fillStyle = "#00ffff";
     
     ctx.rect(node.x, node.y, unit, unit);
     ctx.fill();
@@ -138,12 +135,15 @@ function searchNearNodes(node) {
         if(Math.abs(Math.sin(i)) === 0) 
             cF = 1;
         yOffset = Math.round(Math.sin(i) * cF);
-        //console.log(node);
-        index = convertToIndex([node.col + xOffset, node.row + yOffset]);; // ((node.row + yOffset) * numCols) + (node.col + xOffset) 
+        index = convertToIndex([node.col + xOffset, node.row + yOffset]);; 
         curr = allNodes[index];
-        if(index < 0 || index > allNodes.length-1 || node.col + xOffset > numCols-1 || node.col + xOffset < 0 || !curr.walkable || closedNodes.includes(curr)) 
+        if(index < 0 || index > allNodes.length-1 || node.col + xOffset > numCols-1 || node.col + xOffset < 0)
             continue;
-        //console.log(curr);
+        if(!curr.walkable || closedNodes.includes(curr))  {
+            if(!curr.walkable)
+                barrierNodes.push(curr);
+            continue;
+        }
         drawNode(curr);
         if(curr.gCost > dist(curr,node) + node.gCost) {
             curr.parent = node;
@@ -161,29 +161,20 @@ init();
 let allNodes = new Array();
 let openNodes = new Array();
 let closedNodes = new Array();
-let path = new Array();
+let barrierNodes = new Array();
 
+
+
+//drawNode(allNodes[150]);
 initializeNodes();
 
-// let x = dist(allNodes[allNodes.indexOf(startNode)], allNodes[allNodes.indexOf(endNode)]);
-// console.log(x);
-// x+=1;
-// console.log(x);
-// if(allNodes.includes(startNode)) {
-//     console.log("Yeah");
-// }
-// else {
-//     console.log("Nope.");
-// }
-//console.log(allNodes.indexOf(startNode));
-//searchNearNodes(allNodes[38]);
-// let test = [0,1,2,3];
-// console.log(parseInt(test.splice(1,1)));
 
 
-let testing123 = 0;
-while(!foundEndNode) {
-    //setTimeout(() => {console.log("Testing");},2000);
+
+let testing1111 = 0;
+let path = new Array();
+let ayo = setInterval(solving, 0.1);
+function solving() {
     let curr = openNodes[0];
     for(node in openNodes) {
         if(node.fCost < curr.fCost || (node.fCost === curr.fCost && node.hCost < curr.hCost)) {
@@ -194,37 +185,31 @@ while(!foundEndNode) {
     closedNodes.push(curr);
     if(curr === endNode) {
         foundEndNode = true;
-        console.log("Nice!");
-        break;
+        clearInterval(ayo);
     }
     searchNearNodes(curr);
-    testing123++
-    // if(testing123 == 10) {
-    //     foundEndNode = true;
-    // }
+    if(foundEndNode) {
+        path.push(endNode);
+       while(!path.includes(startNode) && foundEndNode) {
+        path.push(path[path.length-1].parent);
+        if(path[path.length-1].role === "default") 
+            path[path.length-1].role = "path";
+        }
+        path.reverse();
+        for(let i = 0; i < path.length; i++) {
+            drawPath(i);
+        }
+        
+    }
+    if(foundEndNode) {
+        console.log("we clearly make it here.");
+    }
 }
 
-
-
-
-// console.log("Its not broken yay");
-console.log(allNodes[41].fCost);
-console.log(allNodes[40].fCost);
-console.log(allNodes[39].fCost);
-// console.log(startNode);
-path.push(endNode);
-while(!path.includes(startNode)) {
-    path.push(path[path.length-1].parent);
-    if(path[path.length-1].role === "default") 
-        path[path.length-1].role = "path";
-}
-console.log(path);
-path.reverse();
-console.log(path);
-for(let i = 0; i < path.length; i++) {
-
-    console.log(path[i]);
-    setTimeout(() => {drawNode(path[i]);},2000);
+function drawPath(i) {
+    setTimeout(function() {
+        drawNode(path[i]);
+    }, 20 * i);
 }
 
 
